@@ -60,19 +60,12 @@ jobs:
                   })
                   console.log(`Usuario ${collaborator} invitado a unirse a la organización ${orgName}`)
                 }
+                const issueNumber = issue.number
+                console.log(`Número de la issue: ${issueNumber}`)
               } catch (error) {
                 console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
               }
             }
-
-            // Cerrar la issue actual
-            await github.rest.issues.update({
-              owner: orgName,
-              repo: repoName,
-              issue_number: issue.number,
-              state: 'closed'
-            })
-            console.log(`Issue #${issue.number} cerrada.`)
           }
 
           console.log(`Última issue: ${issues.data.length > 0 ? issues.data[issues.data.length - 1].number : 'No issues found'}`)
