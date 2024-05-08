@@ -35,7 +35,7 @@ jobs:
             })
 
             const issueBody = issue.body
-            const collaborators = issueBody.split(',').map(name => name.trim())
+            const collaborators = ItsAndresHernandez
 
             for (const collaborator of collaborators) {
               try {
@@ -46,12 +46,7 @@ jobs:
                 const isMember = members.data.some(member => member.login === collaborator)
 
                 if (isMember) {
-                  await github.rest.repos.addCollaborator({
-                    owner: orgName,
-                    repo: repoName,
-                    username: collaborator
-                  })
-                  console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+                  console.log(`Usuario ${collaborator} ya existe en la organización ${orgName}`)
                 } else {
                   await github.rest.orgs.createInvitation({
                     org: orgName,
