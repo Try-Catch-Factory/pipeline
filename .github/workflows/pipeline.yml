@@ -33,12 +33,15 @@ jobs:
               name: repoName,
               description: repoName
             })
-
+            
             const issueBody = issue.body
-            const collaborators = "ItsAndresHernandez"
-
+            const collaborators = issueBody.split('\n').map(name => name.trim())
+            
             for (const collaborator of collaborators) {
               try {
+                if (collaborator === '') {
+                  continue;
+                }
                 const user = await github.rest.users.getByUsername({ username: collaborator })
                 const members = await github.rest.orgs.listMembers({
                   org: orgName
