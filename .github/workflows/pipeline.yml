@@ -13,7 +13,7 @@ jobs:
         id: add-members
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GIT_TOKEN }}
+          github-token: ${{ secrets.GIT_DATA }}
           script: |
             const orgName = 'Try-Catch-Factory'
             const repoName = 'pipeline'
