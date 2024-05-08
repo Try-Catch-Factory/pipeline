@@ -1,0 +1,51 @@
+name: Crear repositorio y agregar colaboradores
+
+on:
+    workflow_dispatch:
+    schedule:
+      - cron: '* * * * *'
+
+jobs:
+
+  crear-repositorio:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Crear repositorio y agregar colaboradores
+      id: add-collaborators
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GIT_DATA }}
+        script: |
+          const orgName = 'Try-Catch-Factory'
+          const issueTitle = '${{ github.event.issue.title }}'
+          const issueBody = '${{ github.event.issue.body }}'
+          const repoName = issueTitle
+
+          await github.rest.repos.createInOrg({
+            org: orgName,
+            name: repoName
+          })
+
+          const collaborators = issueBody.split(',').map(name => name.trim())
+
+          for (const collaborator of collaborators) {
+            try {
+              const user = await github.rest.users.getByUsername({ username: collaborator })
+              await github.rest.repos.addCollaborator({
+                owner: orgName,
+                repo: repoName,
+                username: collaborator
+              })
+              console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+            } catch (error) {
+              console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
+            }
+          }
+
+    - name: Close Issue
+      if: steps.add-collaborators.outputs.issueNumber != null
+      uses: peter-evans/close-issue@v3
+      with:
+        issue-number: ${{ github.event.issue.number }}
+        comment: Repositorio creado y colaboradores agregados
