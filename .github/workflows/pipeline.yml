@@ -3,8 +3,8 @@ name: Agregar miembros a la organización y crear repositorio
 on:
   workflow_dispatch:
   schedule:
-    - cron: '* _*_'
-
+    - cron: '* * * * *'
+    
 jobs:
   agregar-miembros:
     runs-on: ubuntu-latest
