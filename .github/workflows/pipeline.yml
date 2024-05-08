@@ -1,15 +1,14 @@
 name: Crear repositorio y agregar colaboradores
 
 on:
-    workflow_dispatch:
-    schedule:
-      - cron: '* * * * *'
+  workflow_dispatch:
+  schedule:
+    - cron: '* * * * *'
 
 jobs:
-
   crear-repositorio:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Crear repositorio y agregar colaboradores
       id: add-collaborators
@@ -18,29 +17,54 @@ jobs:
         github-token: ${{ secrets.GIT_DATA }}
         script: |
           const orgName = 'Try-Catch-Factory'
-          const issueTitle = '${{ github.event.issue.title }}'
-          const issueBody = '${{ github.event.issue.body }}'
-          const repoName = issueTitle
+          const repoName = 'pipeline'
 
-          await github.rest.repos.createInOrg({
-            org: orgName,
-            name: repoName
+          const issues = await github.rest.issues.listForRepo({
+            owner: orgName,
+            repo: repoName,
+            state: 'open'
           })
 
-          const collaborators = issueBody.split(',').map(name => name.trim())
+          for (const issue of issues.data) {
+            const issueTitle = issue.title
+            const issueBody = issue.body
 
-          for (const collaborator of collaborators) {
-            try {
-              const user = await github.rest.users.getByUsername({ username: collaborator })
-              await github.rest.repos.addCollaborator({
-                owner: orgName,
-                repo: repoName,
-                username: collaborator
-              })
-              console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
-            } catch (error) {
-              console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
+            if (!issueTitle) {
+              console.log('El título de la issue no puede estar vacío.')
+              continue
             }
+
+            const repoName = issueTitle
+
+            await github.rest.repos.createInOrg({
+              org: orgName,
+              name: repoName,
+              description: issueBody
+            })
+
+            const collaborators = issueBody.split(',').map(name => name.trim())
+
+            for (const collaborator of collaborators) {
+              try {
+                const user = await github.rest.users.getByUsername({ username: collaborator })
+                await github.rest.repos.addCollaborator({
+                  owner: orgName,
+                  repo: repoName,
+                  username: collaborator
+                })
+                console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+              } catch (error) {
+                console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
+              }
+            }
+
+            await github.rest.issues.update({
+              owner: orgName,
+              repo: repoName,
+              issue_number: issue.number,
+              state: 'closed'
+            })
+            console.log(`Issue #${issue.number} cerrada.`)
           }
 
     - name: Close Issue
