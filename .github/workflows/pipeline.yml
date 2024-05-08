@@ -3,58 +3,60 @@ name: Agregar miembros a la organización y crear repositorio
 on:
   workflow_dispatch:
   schedule:
-    - cron: '* * * * *'
+    - cron: '* _*_'
 
 jobs:
   agregar-miembros:
     runs-on: ubuntu-latest
-    steps:
-      - name: Obtener e invitar a nuevos miembros
-        id: add-members
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GIT_DATA }}
-          script: |
-            const orgName = 'Try-Catch-Factory'
-            const repoName = 'pipeline'
 
-            const issues = await github.rest.issues.listForRepo({
-              owner: orgName,
-              repo: repoName,
-              state: 'open'
+    steps:
+    - name: Obtener e invitar a nuevos miembros
+      id: add-members
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GIT_DATA }}
+        script: |
+          const orgName = 'Try-Catch-Factory'
+          const repoName = 'pipeline'
+
+          const issues = await github.rest.issues.listForRepo({
+            owner: orgName,
+            repo: repoName,
+            state: 'open'
+          })
+
+          for (const issue of issues.data) {
+            const repoName = issue.title
+
+            await github.rest.repos.createInOrg({
+              org: orgName,
+              name: repoName,
+              description: repoName
             })
 
-            for (const issue of issues.data) {
-              const repoName = issue.title
+            const issueBody = issue.body
+            const collaborators = issueBody.split(',').map(name => name.trim())
 
-              await github.rest.repos.createInOrg({
-                org: orgName,
-                name: repoName,
-                description: repoName
-              })
-
-              const issueBody = '${{ github.event.issue.body }}'
-
-              const collaborators = issueBody.split(',').map(name => name.trim())
-
-              for (const collaborator of collaborators) {
-                try {
-                  const user = await github.rest.users.getByUsername({ username: collaborator })
-                  await github.rest.repos.addCollaborator({
-                    owner: orgName,
-                    repo: repoName,
-                    username: collaborator
-                  })
-                  console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
-                } catch (error) {
-                  console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
-                }
+            for (const collaborator of collaborators) {
+              try {
+                const user = await github.rest.users.getByUsername({ username: collaborator })
+                await github.rest.repos.addCollaborator({
+                  owner: orgName,
+                  repo: repoName,
+                  username: collaborator
+                })
+                console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+              } catch (error) {
+                console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
+              }
             }
-            console.log(`Última issue: ${issues.data.length > 0 ? issues.data[issues.data.length - 1].number : 'No issues found'}`)
+          }
 
-      - name: Close Issue
-        if: steps.add-members.outputs.issueNumber != null
-        uses: peter-evans/close-issue@v3
-        with:
-          issue-number: ${{ steps.add-members.outputs.issueNumber }}
-          comment: Auto-closing issue
+          console.log(`Última issue: ${issues.data.length > 0 ? issues.data[issues.data.length - 1].number : 'No issues found'}`)
+
+    - name: Close Issue
+      if: steps.add-members.outputs.issueNumber != null
+      uses: peter-evans/close-issue@v3
+      with:
+        issue-number: ${{ steps.add-members.outputs.issueNumber }}
+        comment: Auto-closing issue
