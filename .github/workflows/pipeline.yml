@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '* * * * *'
-    
+
 jobs:
   agregar-miembros:
     runs-on: ubuntu-latest
@@ -40,16 +40,39 @@ jobs:
             for (const collaborator of collaborators) {
               try {
                 const user = await github.rest.users.getByUsername({ username: collaborator })
-                await github.rest.repos.addCollaborator({
-                  owner: orgName,
-                  repo: repoName,
-                  username: collaborator
+                const members = await github.rest.orgs.listMembers({
+                  org: orgName
                 })
-                console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+                const isMember = members.data.some(member => member.login === collaborator)
+
+                if (isMember) {
+                  await github.rest.repos.addCollaborator({
+                    owner: orgName,
+                    repo: repoName,
+                    username: collaborator
+                  })
+                  console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+                } else {
+                  await github.rest.orgs.createInvitation({
+                    org: orgName,
+                    invitee_id: user.data.id,
+                    role: 'direct_member'
+                  })
+                  console.log(`Usuario ${collaborator} invitado a unirse a la organización ${orgName}`)
+                }
               } catch (error) {
                 console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
               }
             }
+
+            // Cerrar la issue actual
+            await github.rest.issues.update({
+              owner: orgName,
+              repo: repoName,
+              issue_number: issue.number,
+              state: 'closed'
+            })
+            console.log(`Issue #${issue.number} cerrada.`)
           }
 
           console.log(`Última issue: ${issues.data.length > 0 ? issues.data[issues.data.length - 1].number : 'No issues found'}`)
