@@ -1,6 +1,8 @@
 name: Crear repositorio y agregar colaboradores
 
 on:
+  issues:
+    types: [opened, edited]
   workflow_dispatch:
   schedule:
     - cron: '* * * * *'
@@ -17,59 +19,46 @@ jobs:
         github-token: ${{ secrets.GIT_DATA }}
         script: |
           const orgName = 'Try-Catch-Factory'
-          const repoName = 'pipeline'
+          const issueTitle = `${context.payload.issue.title}`
+          const issueBody = `${context.payload.issue.body}`
 
-          const issues = await github.rest.issues.listForRepo({
-            owner: orgName,
-            repo: repoName,
-            state: 'open'
-          })
-
-          for (const issue of issues.data) {
-            const issueTitle = issue.title
-            const issueBody = issue.body
-
-            if (!issueTitle) {
-              console.log('El título de la issue no puede estar vacío.')
-              continue
-            }
-
-            const repoName = issueTitle
-
-            await github.rest.repos.createInOrg({
-              org: orgName,
-              name: repoName,
-              description: issueBody
-            })
-
-            const collaborators = issueBody.split(',').map(name => name.trim())
-
-            for (const collaborator of collaborators) {
-              try {
-                const user = await github.rest.users.getByUsername({ username: collaborator })
-                await github.rest.repos.addCollaborator({
-                  owner: orgName,
-                  repo: repoName,
-                  username: collaborator
-                })
-                console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
-              } catch (error) {
-                console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
-              }
-            }
-
-            await github.rest.issues.update({
-              owner: orgName,
-              repo: repoName,
-              issue_number: issue.number,
-              state: 'closed'
-            })
-            console.log(`Issue #${issue.number} cerrada.`)
+          if (!issueTitle) {
+            console.log('El título de la issue no puede estar vacío.')
+            return
           }
 
-    - name: Close Issue
-      if: steps.add-collaborators.outputs.issueNumber != null
-      uses: peter-evans/close-issue@v3
-      with:
-        issue-number: ${{ github.event.issue.number }}
-        comment: Repositorio creado y colaboradores agregados
+          const repoName = issueTitle
+
+          // Crear el nuevo repositorio
+          await github.rest.repos.createInOrg({
+            org: orgName,
+            name: repoName,
+            description: issueBody
+          })
+
+          const collaborators = issueBody.split(',').map(name => name.trim())
+
+          for (const collaborator of collaborators) {
+            try {
+              const user = await github.rest.users.getByUsername({ username: collaborator })
+              await github.rest.repos.addCollaborator({
+                owner: orgName,
+                repo: repoName,
+                username: collaborator
+              })
+              console.log(`Usuario ${collaborator} agregado como colaborador del repositorio ${repoName}`)
+            } catch (error) {
+              console.log(`Error al agregar el usuario ${collaborator}: ${error.message}`)
+            }
+          }
+
+          if (context.eventName === 'issues') {
+            const originalRepoName = context.payload.issue.repo.name
+            await github.rest.issues.update({
+              owner: orgName,
+              repo: originalRepoName,
+              issue_number: context.payload.issue.number,
+              state: 'closed'
+            })
+            console.log(`Issue #${context.payload.issue.number} cerrada en el repositorio ${originalRepoName}.`)
+          }
