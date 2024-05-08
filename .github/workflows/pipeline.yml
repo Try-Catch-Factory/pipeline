@@ -35,7 +35,7 @@ jobs:
             })
 
             const issueBody = issue.body
-            const collaborators = ItsAndresHernandez
+            const collaborators = "ItsAndresHernandez"
 
             for (const collaborator of collaborators) {
               try {
